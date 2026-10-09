@@ -144,7 +144,8 @@ def main() -> int:
         if "--offline" in sys.argv and local.exists():
             src = local.read_text("utf-8")
         else:
-            src = urllib.request.urlopen(url, timeout=40).read().decode("utf-8")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (uncle-evan-bots form sync)"})
+            src = urllib.request.urlopen(req, timeout=40).read().decode("utf-8")
             local.write_text(src, "utf-8")
         for a, _ in PAIRS:
             if a in src:

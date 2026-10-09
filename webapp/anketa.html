@@ -734,7 +734,7 @@ let h=HEAD+'<div class="wrap"><div class="lead" style="padding:18px 0 2px">'+
 '<div class="sub" style="font-size:13.5px;margin-top:7px">'+(g.start?'Старт нового бізнесу':'Масштабування діючого')+' · '+esc(S.region||'')+'</div></div>'+
 '<div class="rbox"><div class="rl">Сума гранту, на яку подаєтеся</div>'+
 '<div class="rv">'+grn(g.grant)+'</div>'+
-'<div class="rs">Цю цифру і фіксуйте у бізнес-плані.<br>База '+fmt(g.baseMax)+' грн × '+g.mult.toFixed(2)+' (бонуси +'+g.pct+'%)'+
+'<div class="rs">Цю цифру і фіксуйтете у бізнес-плані.<br>База '+fmt(g.baseMax)+' грн × '+g.mult.toFixed(2)+' (бонуси +'+g.pct+'%)'+
 (g.raw>g.cap?' · обмежено стелею '+fmt(g.cap)+' грн':'')+'</div></div>';
 g.ok.forEach(x=>h+='<div class="msg ok">'+x+'</div>');
 g.warn.forEach(x=>h+='<div class="msg warn">'+x+'</div>');
@@ -898,5 +898,6 @@ if(d&&typeof d==='object'&&typeof d.step==='number'){S=Object.assign({step:0,pat
 setInterval(saveS,1500);
 window.addEventListener('pagehide',saveS);
 draw();</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920" integrity="sha512-L0ha0OXavK/8okipN9F8BtP84dg9DUhPERbBXzwI6dgTA55d2+yweo3pn5CSFYs45/r8md2+xvUPtTdvTNRfjA==" data-cf-beacon='{"version":"2024.11.0","token":"dc1ca2a3192a4c31afd4b6cee1058ee8","r":1,"spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
