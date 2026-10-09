@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError, TelegramForbiddenError, TelegramRetryAfter
 from aiogram.filters import Command, CommandObject, CommandStart
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, ChatMemberUpdated, Message
 
 from . import db, notify, texts as T, ui
 from .config import cfg
@@ -115,6 +115,22 @@ async def cmd_setgroup(m: Message):
         return
     await db.set_setting("orders_chat_id", str(m.chat.id))
     await m.answer("Готово. Заявки приходитимуть у цю групу.")
+
+
+@r.my_chat_member()
+async def on_added(ev: ChatMemberUpdated, bot: Bot):
+    """Адміністратор додав бота в групу або зробив його адміном — група стає групою заявок."""
+    if ev.chat.type not in ("group", "supergroup") or not ui.is_admin(ev.from_user):
+        return
+    if ev.new_chat_member.status not in ("member", "administrator"):
+        return
+    if await db.get_setting("orders_chat_id") == str(ev.chat.id):
+        return
+    await db.set_setting("orders_chat_id", str(ev.chat.id))
+    try:
+        await bot.send_message(ev.chat.id, "Готово. Заявки приходитимуть у цю групу.")
+    except TelegramAPIError as ex:
+        log.info("group hello failed: %s", ex)
 
 
 @r.callback_query(F.data.startswith("st:"))

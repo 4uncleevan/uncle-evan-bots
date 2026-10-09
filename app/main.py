@@ -35,7 +35,11 @@ async def setup_bot(bot: Bot, which: str) -> None:
     if cfg.public_url:
         await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(
             text=label, web_app=WebAppInfo(url=f"{cfg.public_url}/app/{page}")))
-    log.info("bot %s = @%s", which, me.username)
+    wh = await bot.get_webhook_info()
+    log.info("bot %s = @%s, очікує оновлень: %s, вебхук: %s", which, me.username, wh.pending_update_count, bool(wh.url))
+    if wh.url:  # вебхук блокує polling — знімаємо, чергу повідомлень зберігаємо
+        await bot.delete_webhook(drop_pending_updates=False)
+        log.warning("bot %s: знято вебхук", which)
 
 
 async def run() -> None:

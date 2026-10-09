@@ -207,3 +207,23 @@ async def test_info_bot_menu_cards_faq(env):
     assert "Напишіть мені особисто" in s.last("SendMessage").text
     await dp.feed_update(bot, cb("menu", CLIENT, photo_msg))
     assert "Із чого почнемо" in s.last("EditMessageMedia").media.caption
+
+
+async def test_group_set_automatically_when_admin_adds_bot(env):
+    bot, dp, s = make(bot_order.r, "111:AAA-order-test")
+    me = {"id": 1, "is_bot": True, "first_name": "Bot"}
+
+    def added(user, status="member"):
+        global _uid
+        _uid += 1
+        return Update.model_validate({"update_id": _uid, "my_chat_member": {
+            "chat": GROUP, "from": user, "date": 1,
+            "old_chat_member": {"user": me, "status": "left"},
+            "new_chat_member": {"user": me, "status": status}}})
+
+    await dp.feed_update(bot, added(CLIENT))
+    assert await db.get_setting("orders_chat_id") == "", "сторонній не може призначити групу"
+    await dp.feed_update(bot, added(ADMIN, "administrator"))
+    assert await db.get_setting("orders_chat_id") == "-100500"
+    assert "Заявки приходитимуть" in s.last("SendMessage").text
+    assert "my_chat_member" in dp.resolve_used_update_types()
