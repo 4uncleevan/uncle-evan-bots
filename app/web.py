@@ -49,6 +49,15 @@ async def bridge_js(req: web.Request) -> web.Response:
     return web.FileResponse(WEBAPP / "tg-bridge.js", headers={"Cache-Control": "public, max-age=31536000"})
 
 
+async def raw_form(req: web.Request) -> web.Response:
+    """Чиста форма без моста — той самий файл, що стоїть на сайті."""
+    name = req.match_info["name"]
+    if name not in ("anketa", "kalk"):
+        raise web.HTTPNotFound()
+    return web.FileResponse(WEBAPP / f"{name}.html", headers={
+        "Access-Control-Allow-Origin": cfg.site_url.rstrip("/"), "Cache-Control": "no-cache"})
+
+
 async def health(req: web.Request) -> web.Response:
     try:
         await db.scalar(sa.select(sa.func.count()).select_from(db.settings))
@@ -174,6 +183,7 @@ def make_app() -> web.Application:
     app.router.add_get("/app/anketa", page_anketa)
     app.router.add_get("/app/kalk", page_kalk)
     app.router.add_get("/app/tg-bridge.js", bridge_js)
+    app.router.add_get("/forms/{name}.html", raw_form)
     app.router.add_post("/api/state", api_state)
     app.router.add_post("/api/progress", api_progress)
     app.router.add_post("/api/calc", api_calc)

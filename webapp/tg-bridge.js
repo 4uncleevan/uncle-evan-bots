@@ -10,7 +10,7 @@
 
   var css = document.createElement('style');
   css.textContent =
-    'html,body{background:#0B0E1A!important}' +
+    'html,body{background:#0B0E1A!important}.ue-botlink{display:none!important}' +
     '.brandbar{display:block!important;background:linear-gradient(160deg,#12163A,#0B0E1A)!important}' +
     '.brandbar::after{background:linear-gradient(100deg,#5B84FF,#9A6BFF 52%,#E0408A)!important;box-shadow:none!important}' +
     '.brandin img{box-shadow:0 0 0 2px rgba(157,182,255,.6),0 6px 18px rgba(0,0,0,.6)!important}' +

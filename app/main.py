@@ -8,11 +8,27 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.types import BotCommand, MenuButtonWebApp, WebAppInfo
 from aiohttp import web
 
-from . import bot_info, bot_order, db, notify, scheduler, ui
+from . import bot_info, bot_order, db, notify, scheduler, texts as T, ui
 from .config import cfg
 from .web import make_app
 
 log = logging.getLogger("main")
+
+
+async def set_profile(bot: Bot, which: str, me) -> None:
+    """Назва, короткий опис і опис бота — з texts.PROFILE; оновлюємо лише коли змінились."""
+    p = T.PROFILE[which]
+    price = await ui.price()
+    about, descr = p["about"].format(price=price), p["description"].format(price=price)
+    try:
+        if (await bot.get_my_description()).description != descr:
+            await bot.set_my_description(description=descr)
+        if (await bot.get_my_short_description()).short_description != about:
+            await bot.set_my_short_description(short_description=about)
+        if me.first_name != p["name"]:
+            await bot.set_my_name(name=p["name"])
+    except Exception as ex:  # ліміти Telegram на зміну профілю не мають зупиняти запуск
+        log.warning("профіль бота %s не оновлено: %s", which, ex)
 
 
 async def setup_bot(bot: Bot, which: str) -> None:
@@ -32,6 +48,7 @@ async def setup_bot(bot: Bot, which: str) -> None:
                 BotCommand(command="delete", description="Видалити мої дані")]
         page, label = "kalk", "Калькулятор"
     await bot.set_my_commands(cmds)
+    await set_profile(bot, which, me)
     if cfg.public_url:
         await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(
             text=label, web_app=WebAppInfo(url=f"{cfg.public_url}/app/{page}")))

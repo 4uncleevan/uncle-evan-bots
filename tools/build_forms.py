@@ -112,9 +112,27 @@ PAIRS = [
 LEFT = re.compile(r"(?<![А-Яа-яЇїІіЄєҐґ’'])(ти|тебе|тобі|тобою|твій|твоя|твої|твого|твоєму|твоєю|твоїх)(?![А-Яа-яЇїІіЄєҐґ’'])", re.I)
 
 
-def convert(html: str) -> str:
+# Перелінкування сайт ↔ боти: (якір у формі, що додати одразу після нього).
+BOT_LINKS = {
+    "anketa": (
+        """'<button class="bigbtn no-print" style="margin-top:16px" onclick="go(1)">Заповнити анкету →</button>'+""",
+        """'<a class="sendbtn tg ue-botlink no-print" style="margin-top:10px;text-decoration:none" href="https://t.me/UncleEvanBot?start=site" target="_blank" rel="noopener">Зручніше в Telegram? Анкета в боті →</a>'+""",
+    ),
+    "kalk": (
+        """'<a class="bigbtn next" href="'+ANKETA_URL+'" target="_top">Далі: анкета для бізнес-плану →</a>'+""",
+        """'<a class="sendbtn tg ue-botlink" style="margin-top:10px;text-decoration:none" href="https://t.me/VlasnaSpravaBot?start=site" target="_blank" rel="noopener">Довідник і калькулятор у Telegram-боті →</a>'+""",
+    ),
+}
+
+
+def convert(html: str, name: str = "") -> str:
     for a, b in PAIRS:
         html = html.replace(a, b)
+    if name in BOT_LINKS:
+        anchor, add = BOT_LINKS[name]
+        if anchor not in html:
+            raise SystemExit(f"[{name}] не знайдено місце для посилання на бота")
+        html = html.replace(anchor, anchor + "\n" + add, 1)
     return html
 
 
@@ -131,7 +149,7 @@ def main() -> int:
         for a, _ in PAIRS:
             if a in src:
                 used.add(a)
-        out = convert(src)
+        out = convert(src, name)
         body = out[out.index("<body"):]
         for m in LEFT.finditer(body):
             bad += 1
