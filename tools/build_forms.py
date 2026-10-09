@@ -11,8 +11,8 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = {
-    "anketa": "https://uncleevan.watt-coin.org/wp-content/uploads/2026/10/anketa-grant-vlasna-sprava-v10.html",
-    "kalk": "https://uncleevan.watt-coin.org/wp-content/uploads/2026/10/kalkulyator-grantu-vlasna-sprava-v9.html",
+    "anketa": "https://uncleevan.watt-coin.org/wp-content/uploads/2026/10/anketa-grant-vlasna-sprava-v11.html",
+    "kalk": "https://uncleevan.watt-coin.org/wp-content/uploads/2026/10/kalkulyator-grantu-vlasna-sprava-v10.html",
 }
 
 # (було, стало). Довші фрази — раніше за коротші, що в них входять.
@@ -128,7 +128,7 @@ BOT_LINKS = {
 def convert(html: str, name: str = "") -> str:
     for a, b in PAIRS:
         html = html.replace(a, b)
-    if name in BOT_LINKS:
+    if name in BOT_LINKS and "ue-botlink" not in html:
         anchor, add = BOT_LINKS[name]
         if anchor not in html:
             raise SystemExit(f"[{name}] не знайдено місце для посилання на бота")
@@ -156,9 +156,6 @@ def main() -> int:
             print(f"[{name}] лишилось «ти»: …{body[max(0, m.start()-40):m.end()+40]!r}…")
         (ROOT / "webapp" / f"{name}.html").write_text(out, "utf-8")
         print(f"{name}: {len(src)} → {len(out)} символів")
-    for a, _ in PAIRS:
-        if a not in used:
-            print("не знайдено у формах:", a)
     return 1 if bad else 0
 
 
