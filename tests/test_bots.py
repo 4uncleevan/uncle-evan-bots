@@ -223,7 +223,7 @@ async def test_group_set_automatically_when_admin_adds_bot(env):
 
     await dp.feed_update(bot, added(CLIENT))
     assert await db.get_setting("orders_chat_id") == "", "сторонній не може призначити групу"
-    await dp.feed_update(bot, added(ADMIN, "administrator"))
+    await dp.feed_update(bot, added(ADMIN))
     assert await db.get_setting("orders_chat_id") == "-100500"
     assert "Заявки приходитимуть" in s.last("SendMessage").text
     assert "my_chat_member" in dp.resolve_used_update_types()
