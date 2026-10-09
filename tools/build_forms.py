@@ -127,6 +127,8 @@ BOT_LINKS = {
 
 def convert(html: str, name: str = "") -> str:
     for a, b in PAIRS:
+        if a in b and b in html:  # уже переведено: «фіксуй» є частиною «фіксуйте»
+            continue
         html = html.replace(a, b)
     if name in BOT_LINKS and "ue-botlink" not in html:
         anchor, add = BOT_LINKS[name]

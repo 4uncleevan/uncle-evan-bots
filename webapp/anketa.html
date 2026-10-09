@@ -734,7 +734,7 @@ let h=HEAD+'<div class="wrap"><div class="lead" style="padding:18px 0 2px">'+
 '<div class="sub" style="font-size:13.5px;margin-top:7px">'+(g.start?'Старт нового бізнесу':'Масштабування діючого')+' · '+esc(S.region||'')+'</div></div>'+
 '<div class="rbox"><div class="rl">Сума гранту, на яку подаєтеся</div>'+
 '<div class="rv">'+grn(g.grant)+'</div>'+
-'<div class="rs">Цю цифру і фіксуйтете у бізнес-плані.<br>База '+fmt(g.baseMax)+' грн × '+g.mult.toFixed(2)+' (бонуси +'+g.pct+'%)'+
+'<div class="rs">Цю цифру і фіксуйте у бізнес-плані.<br>База '+fmt(g.baseMax)+' грн × '+g.mult.toFixed(2)+' (бонуси +'+g.pct+'%)'+
 (g.raw>g.cap?' · обмежено стелею '+fmt(g.cap)+' грн':'')+'</div></div>';
 g.ok.forEach(x=>h+='<div class="msg ok">'+x+'</div>');
 g.warn.forEach(x=>h+='<div class="msg warn">'+x+'</div>');
