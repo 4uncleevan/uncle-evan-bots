@@ -1,0 +1,4 @@
+-r requirements.txt
+pytest
+pytest-asyncio
+playwright==1.56.0
