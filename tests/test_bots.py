@@ -187,7 +187,7 @@ async def test_info_bot_menu_cards_faq(env):
     assert "не офіційний сервіс Дії" in texts_of(m)
     assert b[0].web_app.url == "https://example.test/app/kalk"
     urls = [x.url for x in b if x.url]
-    assert "https://t.me/UncleEvanBot?start=botB" in urls and "https://t.me/granrtydia" in urls \
+    assert "https://t.me/UncleEvanBot?start=botB" in urls and "https://t.me/news4uncleevan" in urls \
         and "https://uncleevan.watt-coin.org/" in urls, "три виходи: замовлення, сайт, канал"
     assert (await db.get_user(600))["source"] == "site"
     photo_msg = {"message_id": 77, "date": 1, "chat": {"id": 600, "type": "private"},

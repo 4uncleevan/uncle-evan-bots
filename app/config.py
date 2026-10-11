@@ -29,7 +29,7 @@ class Config:
     db_url: str = field(default_factory=_db_url)
     admins: list[str] = field(default_factory=lambda: _list("ADMIN_USERNAMES", "diadyaevan"))
     price: int = field(default_factory=lambda: int(os.getenv("PRICE", "7000")))
-    channel_url: str = field(default_factory=lambda: os.getenv("CHANNEL_URL", "https://t.me/granrtydia"))
+    channel_url: str = field(default_factory=lambda: os.getenv("CHANNEL_URL", "https://t.me/news4uncleevan"))
     reviews_url: str = field(default_factory=lambda: os.getenv("REVIEWS_URL", "https://t.me/uncleevan"))
     owner_url: str = field(default_factory=lambda: os.getenv("OWNER_URL", "https://t.me/diadyaevan"))
     site_url: str = field(default_factory=lambda: os.getenv("SITE_URL", "https://uncleevan.watt-coin.org/"))
