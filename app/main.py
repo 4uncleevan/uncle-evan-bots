@@ -8,7 +8,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.types import BotCommand, MenuButtonWebApp, WebAppInfo
 from aiohttp import web
 
-from . import bot_info, bot_order, db, notify, scheduler, texts as T, ui
+from . import autopost, bot_info, bot_order, db, notify, scheduler, texts as T, ui
 from .config import cfg
 from .web import make_app
 
@@ -84,6 +84,7 @@ async def run() -> None:
         dp.include_router(router)
         tasks.append(asyncio.create_task(dp.start_polling(bot, handle_signals=False), name=f"poll-{which}"))
     tasks.append(asyncio.create_task(scheduler.loop(), name="scheduler"))
+    tasks.append(asyncio.create_task(autopost.loop(), name="autopost"))
 
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

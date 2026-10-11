@@ -8,7 +8,7 @@ import re
 import sqlalchemy as sa
 from aiohttp import web
 
-from . import bot_info, db, notify, tgauth, ui
+from . import autopost, bot_info, db, notify, tgauth, ui
 from .config import cfg
 from .grant import calc_anketa, calc_kalk, money
 
@@ -176,6 +176,22 @@ async def api_submit(tg_id: int, which: str, body: dict) -> dict:
     return {"ok": True, "id": app_id, "grant": g["grant"]}
 
 
+async def viber_hook(req: web.Request) -> web.Response:
+    """Колбек Viber Channels API: потрібна лише відповідь 200."""
+    return web.json_response({"status": 0})
+
+
+async def media_jpeg(req: web.Request) -> web.Response:
+    try:
+        data = await autopost.jpeg_for(int(req.match_info["post_id"]))
+    except Exception as ex:
+        log.warning("media jpeg: %s", ex)
+        data = None
+    if not data:
+        raise web.HTTPNotFound()
+    return web.Response(body=data, content_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+
 def make_app() -> web.Application:
     app = web.Application(client_max_size=MAX_BODY * 2)
     app.router.add_get("/", health)
@@ -188,4 +204,6 @@ def make_app() -> web.Application:
     app.router.add_post("/api/progress", api_progress)
     app.router.add_post("/api/calc", api_calc)
     app.router.add_post("/api/submit", api_submit)
+    app.router.add_post("/viber", viber_hook)
+    app.router.add_get("/media/{post_id:\\d+}.jpeg", media_jpeg)
     return app

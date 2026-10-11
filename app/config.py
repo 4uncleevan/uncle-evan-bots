@@ -37,6 +37,10 @@ class Config:
     video_url: str = field(default_factory=lambda: os.getenv("VIDEO_URL", ""))
     sheet_webhook: str = field(default_factory=lambda: os.getenv("SHEET_WEBHOOK_URL", ""))
     terms_date: str = field(default_factory=lambda: os.getenv("TERMS_DATE", "25.09.2026"))
+    tg_channel: str = field(default_factory=lambda: os.getenv("TG_CHANNEL", "@news4uncleevan"))
+    viber_token: str = field(default_factory=lambda: os.getenv("VIBER_CHANNEL_TOKEN", "").strip())
+    viber_from: str = field(default_factory=lambda: os.getenv("VIBER_FROM", "").strip())
+    autopost: bool = field(default_factory=lambda: os.getenv("AUTOPOST", "1") not in ("0", "false", "no", ""))
     tz: ZoneInfo = field(default_factory=lambda: ZoneInfo(os.getenv("TZ_NAME", "Europe/Kyiv")))
     quiet_from: int = 22
     quiet_to: int = 8

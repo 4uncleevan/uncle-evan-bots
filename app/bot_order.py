@@ -177,6 +177,7 @@ ADMIN_HELP = (
     "/broadcast сегмент — розсилка (у відповідь на повідомлення). Сегменти: calc, started, ordered, clients, all\n"
     "/pause, /resume — нагадування\n"
     "/setgroup — у групі «Заявки»\n"
+    "/repost ID — повторно поширити статтю сайту в канали\n"
     "/links — посилання з мітками джерел"
 )
 
@@ -254,6 +255,24 @@ async def cmd_video(m: Message, command: CommandObject):
     else:
         cur = await db.get_setting("video_url", cfg.video_url)
         await m.answer(f"Поточне відео: {e(cur) or 'немає'}\nЗмінити: /video https://…mp4 або /video off")
+
+
+@r.message(Command("repost"))
+@admin_only
+async def cmd_repost(m: Message, command: CommandObject):
+    from . import autopost
+    import aiohttp
+    arg = (command.args or "").strip()
+    if not arg.isdigit():
+        await m.answer("Формат: /repost ID_статті (число з адреси редагування в адмінці).")
+        return
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as s:
+        p = await autopost.fetch_post(s, int(arg))
+    if not p:
+        await m.answer("Статтю не знайдено серед останніх 20 опублікованих.")
+        return
+    res = await autopost.publish(p, force=True)
+    await m.answer(f"<b>{e(p['title'])}</b>\n" + "\n".join(f"{k}: {v}" for k, v in res.items()))
 
 
 @r.message(Command("pause"))
