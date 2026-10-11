@@ -273,6 +273,17 @@ async def loop() -> None:
         log.info("автопост вимкнено (AUTOPOST=0)")
         return
     await asyncio.sleep(20)
+    if cfg.viber_token:
+        try:  # перевірка токена одразу після запуску: вебхук + суперадмін
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as s:
+                sender = await viber_setup(s)
+            if await db.get_setting("viber_ok") != sender:
+                await db.set_setting("viber_ok", sender)
+                await notify.to_group("✅ Viber-канал підключено до автопосту.")
+            log.info("Viber готовий")
+        except Exception as ex:
+            log.warning("Viber: %s", ex)
+            await notify.to_group(f"⚠️ Viber-канал не підключився: {html.escape(str(ex)[:300])}")
     while True:
         try:
             await tick()
