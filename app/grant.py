@@ -1,10 +1,20 @@
 """Параметри гранту «Власна справа 2.0» і розрахунок суми.
 
-Логіка один в один із формами сайту (анкета v10, калькулятор v9).
+Логіка один в один із формами сайту (анкета v12, калькулятор v11).
 Змінилась постанова — правимо тут і у формах.
+
+Бонус +20 % за робочі місця (форма бізнес-плану від 05.10.2026):
+• «Старт» — за зобов’язання створити 2 нові місця;
+• «Масштабування» — 1 нове місце обов’язкове за програмою й бонусу не дає, тож бонус нараховується
+  лише за 3 нові місця (1 + 2). Двох працівників для бонусу недостатньо.
 """
 BASE = {"start": 300_000, "scale": 1_500_000}
 CAP = {"start": 500_000, "scale": 2_500_000}
+JOBS_BONUS = {"start": 2, "scale": 3}          # скільки нових місць дають +20 %
+JOBS_LABEL = {
+    "start": "Два і більше нових робочих місця",
+    "scale": "Три і більше нових робочих місця (1 обов’язкове + 2 для бонусу)",
+}
 
 FRONTLINE = {
     "Дніпропетровська область", "Донецька область", "Запорізька область",
@@ -23,7 +33,6 @@ CHIP_LABELS = {
     "pdv": ("Платник ПДВ", 20),
     "pat": ("Патент на винахід або корисну модель", 20),
     "vpo": ("ВПО з досвідом 6+ міс. або переїзд бізнесу", 20),
-    "jobs2": ("Два і більше нових робочих місця", 20),
     "rep": ("Відновлення пошкодженого війною", 30),
 }
 
@@ -65,15 +74,18 @@ def _finish(path: str, bonuses: list[tuple[str, int, bool]]) -> dict:
 
 def calc_kalk(s: dict) -> dict:
     on = s.get("on") or []
+    path = "scale" if s.get("path") == "scale" else "start"
     b = [
         (*CHIP_LABELS["age"], "age" in on), (*CHIP_LABELS["vet"], "vet" in on),
         (*CHIP_LABELS["pdv"], "pdv" in on), (*CHIP_LABELS["pat"], "pat" in on),
-        (*CHIP_LABELS["vpo"], "vpo" in on), (*CHIP_LABELS["jobs2"], "jobs2" in on),
+        (*CHIP_LABELS["vpo"], "vpo" in on), (JOBS_LABEL[path], 20, "jobs2" in on),
         ("Прифронтовий регіон", 30, s.get("region") in FRONTLINE),
         (*CHIP_LABELS["rep"], "rep" in on),
         ("Пріоритетна галузь", 50, s.get("sector") in PRIORITY),
     ]
-    return _finish("scale" if s.get("path") == "scale" else "start", b)
+    r = _finish(path, b)
+    r["jobs_bonus"] = "jobs2" in on
+    return r
 
 
 def items_total(s: dict) -> int:
@@ -83,20 +95,22 @@ def items_total(s: dict) -> int:
 def calc_anketa(s: dict) -> dict:
     st, bn = s.get("status") or [], s.get("bonus") or []
     jobs = _lead_int(s.get("jobs"))
+    path = "start" if s.get("path") == "start" else "scale"
     b = [
         ("Вік 18–25 років", 5, s.get("age") == "18–25 років"),
         ("Ветеранське підприємництво", 20, _has(st, "Ветеран або учасник") or _has(st, "ветеранського підприємництва")),
         ("Платник ПДВ", 20, _has(bn, "платник ПДВ") or s.get("tax") == "ФОП 3 група — 3% з ПДВ"),
         ("Патент на винахід або корисну модель", 20, _has(bn, "патент")),
         ("ВПО з досвідом 6+ міс. або переїзд бізнесу", 20, _has(bn, "ВПО і вже мав") or _has(bn, "переїхав")),
-        ("Два і більше нових робочих місця", 20, jobs >= 2),
+        (JOBS_LABEL[path], 20, jobs >= JOBS_BONUS[path]),
         ("Прифронтовий регіон", 30, s.get("region") in FRONTLINE),
         ("Відновлення пошкодженого війною", 30, _has(bn, "замість пошкодженого")),
         ("Пріоритетна галузь", 50, _has(bn, "галузь пріоритетна")),
     ]
-    r = _finish("start" if s.get("path") == "start" else "scale", b)
+    r = _finish(path, b)
     r["items_total"] = items_total(s)
     r["jobs"] = jobs
+    r["jobs_bonus"] = jobs >= JOBS_BONUS[path]
     return r
 
 

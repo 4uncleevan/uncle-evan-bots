@@ -52,6 +52,8 @@ def app_card(app: dict, user: dict | None) -> str:
     ]
     if not g["start"] and g["jobs"] < 1:
         lines.append("⚠️ Масштабування без нового робочого місця")
+    elif not g["start"] and g["jobs"] == 2:
+        lines.append("ℹ️ Масштабування: 2 місця — бонус +20 % за робочі місця не нараховано (потрібно 3: 1 + 2)")
     return "\n".join(lines)
 
 

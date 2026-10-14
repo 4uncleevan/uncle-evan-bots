@@ -37,7 +37,14 @@ def calc_text(state: dict, price: str) -> str:
     g = calc_kalk(state)
     bon = "\n".join(f"  +{b['p']} % — {b['l']}" for b in g["bonuses"]) or "  бонусів не позначено"
     cap = f" → стеля {money(g['cap'])} грн" if g["raw"] > g["cap"] else ""
-    jobs = "" if g["start"] else "\nДля масштабування обов’язкове щонайменше 1 нове робоче місце."
+    if g["start"]:
+        jobs = "\nБонус +20 % за робочі місця — за зобов’язання створити 2 нові місця." if g["jobs_bonus"] else ""
+    elif g["jobs_bonus"]:
+        jobs = ("\nМасштабування: 1 нове робоче місце обов’язкове, а бонус +20 % враховано за ще 2 — "
+                "разом 3 нові робочі місця.")
+    else:
+        jobs = ("\nМасштабування: обов’язкове щонайменше 1 нове робоче місце. Бонус +20 % за робочі місця — "
+                "лише за 3 (1 обов’язкове + 2 додатково).")
     return T.B3.format(grant=money(g["grant"]), path="Старт" if g["start"] else "Масштабування",
                        base=money(g["base"]), pct=f"+{g['pct']}", cap=cap, bonuses=bon, jobs=jobs,
                        date=cfg.terms_date) + "\n\n" + T.B4.format(price=price)

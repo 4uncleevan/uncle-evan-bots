@@ -54,6 +54,29 @@ async def test_anketa_calc():
     assert calc_anketa({"path": "scale", "tax": "ФОП 3 група — 3% з ПДВ", "jobs": "0 — працюватиму сам"})["pct"] == 20
 
 
+async def test_jobs_bonus_rule():
+    """+20 % за робочі місця: «Старт» — 2 нові місця; «Масштабування» — 3 (1 обов’язкове + 2 для бонусу)."""
+    assert calc_anketa({"path": "start", "jobs": "2 робочі місця"})["pct"] == 20
+    assert calc_anketa({"path": "start", "jobs": "1 робоче місце"})["pct"] == 0
+    for jobs, pct in [("0 — працюватиму сам", 0), ("1 робоче місце", 0), ("2 робочі місця", 0),
+                      ("3 робочі місця: 1 обов’язкове + 2 для бонусу", 20), ("4 робочі місця", 20), ("5 і більше", 20)]:
+        g = calc_anketa({"path": "scale", "jobs": jobs})
+        assert g["pct"] == pct and g["jobs_bonus"] == bool(pct), jobs
+    g = calc_kalk({"path": "scale", "on": ["jobs2"]})
+    assert g["pct"] == 20 and g["grant"] == 1_800_000 and "Три і більше" in g["bonuses"][0]["l"]
+    g = calc_kalk({"path": "start", "on": ["jobs2"]})
+    assert g["pct"] == 20 and g["bonuses"][0]["l"] == "Два і більше нових робочих місця"
+
+
+async def test_calc_text_jobs_rule():
+    from app.bot_info import calc_text
+    no = calc_text({"path": "scale", "on": []}, "7 000")
+    assert "лише за 3 (1 обов’язкове + 2 додатково)" in no
+    yes = calc_text({"path": "scale", "on": ["jobs2"]}, "7 000")
+    assert "разом 3 нові робочі місця" in yes and "Три і більше нових робочих місця" in yes
+    assert "лише за 3" not in calc_text({"path": "start", "on": []}, "7 000")
+
+
 # ---------- підпис Telegram ----------
 async def test_initdata():
     good = tgauth.sign(USER, ORDER)

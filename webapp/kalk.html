@@ -289,6 +289,13 @@ const CHIPS=[
 {k:'pat',t:'Маю патент на винахід або корисну модель',l:'Патент на винахід або корисну модель',p:20},
 {k:'vpo',t:'Я ВПО з досвідом бізнесу 6+ місяців або переїхав бізнес',l:'ВПО з досвідом 6+ міс. або переїзд бізнесу',p:20},
 {k:'rep',t:'Куплю обладнання замість пошкодженого війною',l:'Відновлення пошкодженого війною',p:30}];
+const JOBS={
+start:{t:'Візьму 2 і більше працівників',l:'Два і більше нових робочих місця'},
+scale:{t:'Візьму 3 і більше працівників: 1 обов’язкового та ще 2 для бонусу',l:'Три і більше нових робочих місця (1 обов’язкове + 2 для бонусу)'}};
+const jobsK=()=>JOBS[S.path==='scale'?'scale':'start'];
+const chipT=c=>c.k==='jobs2'?jobsK().t:c.t;
+const chipL=c=>c.k==='jobs2'?jobsK().l:c.l;
+let JOBS_RESET=false;
 const SOURCES=[
 {t:'Постанова КМУ №616 від 15.05.2026 — текст Порядку',u:'https://zakon.rada.gov.ua/laws/show/616-2026-%D0%BF'},
 {t:'Постанова КМУ №738 — базова, зі змінами',u:'https://zakon.rada.gov.ua/laws/show/738-2022-%D0%BF'},
@@ -303,9 +310,9 @@ const SOURCES=[
 {t:'МБКІ — третє бюро кредитних історій',u:'https://ibch.ua'}];
 const DEF=()=>({path:'start',region:'',sector:'',on:[]});
 let S=DEF();
-try{const d=JSON.parse(localStorage.getItem('ue_calc_vs')||'null');
+try{const d=JSON.parse(localStorage.getItem('ue_calc_vs2')||'null');
 if(d&&typeof d==='object'&&Array.isArray(d.on))S=Object.assign(DEF(),d);}catch(e){}
-function saveS(){try{localStorage.setItem('ue_calc_vs',JSON.stringify(S));}catch(e){}}
+function saveS(){try{localStorage.setItem('ue_calc_vs2',JSON.stringify(S));}catch(e){}}
 const app=document.getElementById('app');
 const $=id=>document.getElementById(id);
 const fmt=n=>(Math.round(n)||0).toLocaleString('uk-UA').replace(/[,  ]/g,' ');
@@ -325,7 +332,7 @@ const B=[
 {l:c('pdv').l,p:20,on:has('pdv')},
 {l:c('pat').l,p:20,on:has('pat')},
 {l:c('vpo').l,p:20,on:has('vpo')},
-{l:c('jobs2').l,p:20,on:has('jobs2')},
+{l:chipL(c('jobs2')),p:20,on:has('jobs2')},
 {l:'Прифронтовий регіон',p:30,on:!!(reg&&reg.pf)},
 {l:c('rep').l,p:30,on:has('rep')},
 {l:'Пріоритетна галузь',p:50,on:!!(sec&&sec.p)}];
@@ -335,6 +342,8 @@ const raw=Math.round(base*mult);
 const sum=Math.min(raw,cap);
 const warn=[],info=[];
 if(!start) warn.push('Для діючого бізнесу треба взяти щонайменше 1 працівника. Без цього заявку не приймуть.');
+if(!start&&!has('jobs2')) info.push('Бонус +20% за робочі місця на масштабуванні дається лише за 3 працівників: 1 обов’язковий і ще 2 додатково. Двох працівників для бонусу недостатньо.');
+if(!start&&has('jobs2')) info.push('Бонус +20% враховано за 3 працівників: 1 обов’язковий за програмою масштабування і ще 2 для бонусу. Усіх трьох вносьте в кадровий план бізнес-плану.');
 if(raw>cap) info.push('Ваші бонуси дали б '+grn(raw)+', але закон обмежує цей напрям сумою '+grn(cap)+'.');
 if(!S.region||!S.sector) info.push('Оберіть область і галузь — це два найбільші бонуси: +30% і +50%.');
 return {start,base,cap,B,pct,mult,raw,sum,warn,info};
@@ -370,7 +379,7 @@ d(3,'Бонуси — додаються один до одного',
 '<tr><td class="k">Платник ПДВ</td><td class="v pct">+20%</td></tr>'+
 '<tr><td class="k">Є патент на винахід або корисну модель</td><td class="v pct">+20%</td></tr>'+
 '<tr><td class="k">ВПО з досвідом 6+ місяців або переїзд бізнесу</td><td class="v pct">+20%</td></tr>'+
-'<tr><td class="k">Берете 2 і більше працівників</td><td class="v pct">+20%</td></tr>'+
+'<tr><td class="k">Працівники: старт — від 2; масштабування — від 3 (1 обов’язковий + 2 для бонусу)</td><td class="v pct">+20%</td></tr>'+
 '<tr><td class="k">Прифронтовий регіон</td><td class="v pct">+30%</td></tr>'+
 '<tr><td class="k">Відновлюєте пошкоджене війною</td><td class="v pct">+30%</td></tr>'+
 '<tr class="on"><td class="k"><b>Пріоритетна галузь</b></td><td class="v pct">+50%</td></tr>'+
@@ -449,7 +458,7 @@ app.innerHTML=HEAD+'<div class="wrap calc2"><div class="hbar" id="hbar" aria-hid
 '<select class="sel" id="selSector">'+opt(SECTORS,S.sector,s=>s.p?'+50%':'','Оберіть галузь')+'</select>'+
 '<div class="hint">Не бачите своєї галузі — беріть найближчу за змістом. Точну визначає КВЕД у заявці.</div></div>'+
 '<div class="card qc"><div class="qn"><b>3</b>Позначте, що про Вас <em>можна кілька або жодного</em></div>'+
-'<div class="chips">'+CHIPS.map(c=>'<button type="button" class="chip" data-chip="'+c.k+'" aria-pressed="false"><span class="ck"></span><span class="ct">'+c.t+'</span><span class="cp">+'+c.p+'%</span></button>').join('')+'</div></div>'+
+'<div class="chips">'+CHIPS.map(c=>'<button type="button" class="chip" data-chip="'+c.k+'" aria-pressed="false"><span class="ck"></span><span class="ct">'+chipT(c)+'</span><span class="cp">+'+c.p+'%</span></button>').join('')+'</div></div>'+
 '<div id="msgs"></div>'+
 '<div class="sect">Звідки ця сума</div><div class="block"><table><tbody id="tCalc"></tbody></table></div>'+
 '<div class="sect">Ваші бонуси</div><div class="block"><table>'+
@@ -476,7 +485,7 @@ app.innerHTML=HEAD+'<div class="wrap calc2"><div class="hbar" id="hbar" aria-hid
 '<div class="tip"><b>Як це працює.</b> Держава не призначає суму сама — Ви просите її у заявці і доводите кошторисом у бізнес-плані. Тому беремо максимум, дозволений Вашому напряму, і множимо на бонуси. Підстава: постанова КМУ №738 у редакції №616 від 15.05.2026, пункт 6.</div>'+
 '<div class="foot"><span class="brandline">Uncle Evan · Економічний архітектор майбутнього<br></span>'+
 'Розрахунок орієнтовний. Остаточне рішення ухвалює Державний центр зайнятості.</div></div>';
-app.querySelectorAll('[data-path]').forEach(b=>b.addEventListener('click',()=>{S.path=b.dataset.path;upd();}));
+app.querySelectorAll('[data-path]').forEach(b=>b.addEventListener('click',()=>{if(S.path!==b.dataset.path){const i=S.on.indexOf('jobs2');if(i!==-1){S.on.splice(i,1);JOBS_RESET=true;}}S.path=b.dataset.path;upd();}));
 app.querySelectorAll('[data-chip]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.chip,i=S.on.indexOf(k);if(i===-1)S.on.push(k);else S.on.splice(i,1);upd();}));
 $('selRegion').addEventListener('change',e=>{S.region=e.target.value;upd();});
 $('selSector').addEventListener('change',e=>{S.sector=e.target.value;upd();});
@@ -518,13 +527,14 @@ function upd(first){
 const g=calc();
 app.querySelectorAll('[data-path]').forEach(b=>{const on=b.dataset.path===(g.start?'start':'scale');b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
 app.querySelectorAll('[data-chip]').forEach(b=>{const on=has(b.dataset.chip);b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
+{const jt=app.querySelector('[data-chip="jobs2"] .ct');if(jt)jt.textContent=jobsK().t;}
 $('selRegion').classList.toggle('set',!!S.region);$('selSector').classList.toggle('set',!!S.sector);
 $('hv').textContent=grn(g.sum);{const hb=$('hbv');if(hb)hb.textContent=grn(g.sum);}
 $('hs').innerHTML='База '+fmt(g.base)+' грн × '+g.mult.toFixed(2)+' (бонуси +'+g.pct+'%)'+(g.raw>g.cap?' · обмежено стелею':'');
 $('hBase').textContent=fmt(g.base);$('hPct').textContent='+'+g.pct+'%';$('hCap').textContent=fmt(g.cap);
 if(!first&&lastSum!==g.sum){const h=$('hero');h.classList.remove('pulse');void h.offsetWidth;h.classList.add('pulse');}
 lastSum=g.sum;
-$('msgs').innerHTML=g.warn.map(x=>'<div class="msg warn">'+x+'</div>').join('')+g.info.map(x=>'<div class="msg info">'+x+'</div>').join('');
+$('msgs').innerHTML=g.warn.map(x=>'<div class="msg warn">'+x+'</div>').join('')+(JOBS_RESET?'<div class="msg info">Вимога щодо працівників залежить від напряму, тому відмітку про працівників знято. Позначте її знову, якщо плануєте найняти потрібну кількість.</div>':'')+g.info.map(x=>'<div class="msg info">'+x+'</div>').join('');JOBS_RESET=false;
 $('tCalc').innerHTML='<tr><td class="k">Базова сума Вашого напряму</td><td class="n">'+fmt(g.base)+'</td></tr>'+
 '<tr><td class="k">Бонуси разом</td><td class="n">+'+g.pct+'%</td></tr>'+
 '<tr><td class="k">Множник</td><td class="n">× '+g.mult.toFixed(2)+'</td></tr>'+
@@ -542,7 +552,7 @@ return [
 ['Напрям',S.path==='scale'?'Бізнес уже працює (масштабування)':'Бізнесу ще немає (старт)'],
 ['Область',S.region||'не обрано'],
 ['Галузь',S.sector||'не обрано'],
-['Пільги та умови',S.on.length?CHIPS.filter(c=>has(c.k)).map(c=>c.l).join('; '):'немає']];
+['Пільги та умови',S.on.length?CHIPS.filter(c=>has(c.k)).map(c=>chipL(c)).join('; '):'немає']];
 }
 function buildTxt(){
 const g=calc();

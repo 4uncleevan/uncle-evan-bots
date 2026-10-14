@@ -11,8 +11,8 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = {
-    "anketa": "https://uncleevan.watt-coin.org/wp-content/uploads/2026/10/anketa-grant-vlasna-sprava-v11.html",
-    "kalk": "https://uncleevan.watt-coin.org/wp-content/uploads/2026/10/kalkulyator-grantu-vlasna-sprava-v10.html",
+    "anketa": "https://uncleevan.watt-coin.org/wp-content/uploads/2026/10/anketa-grant-vlasna-sprava-v12.html",
+    "kalk": "https://uncleevan.watt-coin.org/wp-content/uploads/2026/10/kalkulyator-grantu-vlasna-sprava-v11.html",
 }
 
 # (було, стало). Довші фрази — раніше за коротші, що в них входять.
