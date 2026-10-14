@@ -196,8 +196,13 @@ async def contacts_csv(req: web.Request) -> web.Response:
     w = csv.writer(buf)
     w.writerow(["Telegram ID", "Username", "Ім'я", "Телефон", "Email", "Перший контакт", "Останній контакт", "Остання кнопка"])
     f = lambda t: dt.datetime.fromtimestamp(t, cfg.tz).strftime("%d.%m.%Y %H:%M") if t else ""
+
+    def ph(p):  # 0671234567 → 380671234567 (таблиця читає як число; формат колонки додає «+»)
+        d = re.sub(r"\D", "", p or "")
+        return "38" + d if len(d) == 10 and d.startswith("0") else d
+
     for x in rows:
-        w.writerow([x["tg_id"], ("@" + x["username"]) if x["username"] else "", x["name"] or "", x["phone"] or "",
+        w.writerow([x["tg_id"], ("@" + x["username"]) if x["username"] else "", x["name"] or "", ph(x["phone"]),
                     x["email"] or "", f(x["first_seen"]), f(x["last_seen"]), x["last_button"] or ""])
     return web.Response(text=buf.getvalue(), content_type="text/csv", charset="utf-8",
                         headers={"Cache-Control": "no-store"})
