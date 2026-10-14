@@ -8,7 +8,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.types import BotCommand, MenuButtonWebApp, WebAppInfo
 from aiohttp import web
 
-from . import autopost, bot_info, bot_order, db, notify, scheduler, texts as T, ui
+from . import autopost, bot_info, bot_keys, bot_order, db, notify, scheduler, texts as T, ui
 from .config import cfg
 from .web import make_app
 
@@ -35,6 +35,15 @@ async def setup_bot(bot: Bot, which: str) -> None:
     me = await bot.get_me()
     ui.BOT_NAMES[which] = me.username
     notify.BOTS[which] = bot
+    if which == "keys":
+        await bot.set_my_commands([BotCommand(command="start", description="Як користуватись"),
+                                   BotCommand(command="status", description="Стан підключення"),
+                                   BotCommand(command="contacts", description="Вивантажити контакти")])
+        wh = await bot.get_webhook_info()
+        if wh.url:
+            await bot.delete_webhook(drop_pending_updates=False)
+        log.info("bot keys = @%s", me.username)
+        return
     if which == "order":
         cmds = [BotCommand(command="start", description="Анкета для бізнес-плану"),
                 BotCommand(command="help", description="Довідка"),
@@ -74,7 +83,8 @@ async def run() -> None:
 
     tasks: list[asyncio.Task] = []
     props = DefaultBotProperties(parse_mode="HTML")
-    for which, token, router in (("order", cfg.order_token, bot_order.r), ("info", cfg.info_token, bot_info.r)):
+    for which, token, router in (("order", cfg.order_token, bot_order.r), ("info", cfg.info_token, bot_info.r),
+                                 ("keys", cfg.keys_token, bot_keys.r)):
         if not token:
             log.warning("токен бота %s не задано — бот не запущено", which)
             continue
@@ -82,7 +92,12 @@ async def run() -> None:
         await setup_bot(bot, which)
         dp = Dispatcher()
         dp.include_router(router)
-        tasks.append(asyncio.create_task(dp.start_polling(bot, handle_signals=False), name=f"poll-{which}"))
+        kw = {}
+        if which == "keys":
+            kw["allowed_updates"] = ["message", "inline_query", "chosen_inline_result", "callback_query",
+                                     "business_connection", "business_message", "edited_business_message",
+                                     "deleted_business_messages"]
+        tasks.append(asyncio.create_task(dp.start_polling(bot, handle_signals=False, **kw), name=f"poll-{which}"))
     tasks.append(asyncio.create_task(scheduler.loop(), name="scheduler"))
     tasks.append(asyncio.create_task(autopost.loop(), name="autopost"))
 

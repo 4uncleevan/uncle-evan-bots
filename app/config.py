@@ -21,6 +21,7 @@ def _db_url() -> str:
 class Config:
     order_token: str = field(default_factory=lambda: os.getenv("BOT_ORDER_TOKEN", ""))
     info_token: str = field(default_factory=lambda: os.getenv("BOT_INFO_TOKEN", ""))
+    keys_token: str = field(default_factory=lambda: os.getenv("BOT_KEYS_TOKEN", ""))
     public_url: str = field(default_factory=lambda: (
         os.getenv("PUBLIC_URL") or
         (("https://" + os.getenv("RAILWAY_PUBLIC_DOMAIN")) if os.getenv("RAILWAY_PUBLIC_DOMAIN") else "")

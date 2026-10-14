@@ -1,6 +1,7 @@
-aiogram==3.13.1
+aiogram==3.17.0
 SQLAlchemy[asyncio]==2.0.36
 asyncpg==0.32.0
 aiosqlite==0.22.1
 tzdata
 Pillow==11.0.0
+PyYAML==6.0.2
