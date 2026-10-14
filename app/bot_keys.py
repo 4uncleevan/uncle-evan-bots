@@ -104,18 +104,11 @@ async def inline(q: InlineQuery):
     for b in buttons():
         if needle and needle not in b["title"].lower() and needle not in b.get("desc", "").lower():
             continue
-        first = b["messages"][0]
-        text = await render(first["text"])
-        if len(b["messages"]) > 1:
-            text += marker(b["id"], 1)
         results.append(InlineQueryResultArticle(
             id=hashlib.md5(b["id"].encode()).hexdigest(),
             title=("👤 " if b["kind"] == "client" else "") + b["title"],
             description=(await render(b.get("desc", ""))) + (f" · {len(b['messages'])} повід." if len(b["messages"]) > 1 else ""),
-            input_message_content=InputTextMessageContent(
-                message_text=text, parse_mode="HTML",
-                link_preview_options=LinkPreviewOptions(is_disabled=True)),
-            reply_markup=kb(first.get("buttons")),
+            input_message_content=InputTextMessageContent(message_text="⏳" + marker(b["id"], 0)),
         ))
     await q.answer(results[:50], cache_time=1, is_personal=True)
 
@@ -149,25 +142,31 @@ async def on_business_message(m: Message, bot: Bot):
                                                       "from": m.from_user and m.from_user.username}))
     # контакт
     await upsert_contact(m)
-    # серія
+    # тригер кнопки
     mk = read_marker(m.text or "")
     if who == "ВЛАСНИК" and mk:
         bid, idx = mk
         b = by_id(bid)
         if not b:
             return
+        try:
+            await bot.delete_business_messages(business_connection_id=m.business_connection_id, message_ids=[m.message_id])
+        except TelegramAPIError as ex:
+            log.warning("keys: тригер не видалено (потрібне право «видаляти повідомлення»): %s", ex)
+            await notify.to_group("⚠️ Бот-кнопки: не можу прибрати службове «⏳» — у Telegram Business → Чатботи "
+                                  "увімкніть боту право видаляти повідомлення.")
         name = m.chat.first_name or ""
         for step in b["messages"][idx:]:
-            await asyncio.sleep(0.6)
             try:
                 await bot.send_message(m.chat.id, await render(step["text"], name), parse_mode="HTML",
                                        business_connection_id=m.business_connection_id,
                                        reply_markup=kb(step.get("buttons")),
                                        link_preview_options=LinkPreviewOptions(is_disabled=True))
             except TelegramAPIError as ex:
-                log.warning("keys: серію %s не дослано: %s", bid, ex)
-                await notify.to_group(f"⚠️ Кнопка «{b['title']}»: серію не дослано — {ex}")
+                log.warning("keys: кнопку %s не надіслано: %s", bid, ex)
+                await notify.to_group(f"⚠️ Кнопка «{b['title']}»: не надіслано — {ex}")
                 break
+            await asyncio.sleep(0.5)
         await db.log("keys_button", m.chat.id, bid)
 
 
