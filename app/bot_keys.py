@@ -150,7 +150,7 @@ async def on_business_message(m: Message, bot: Bot):
     await db.set_setting("keys_last_bm", json.dumps({"chat": m.chat.id, "who": who, "type": kind,
                                                       "from": m.from_user and m.from_user.username}))
     # контакт
-    await upsert_contact(m)
+    await upsert_contact(m, from_client=bool(me_owner))
     # тригер кнопки
     mk = read_marker(m.text or "")
     if who == "ВЛАСНИК" and mk:
@@ -195,11 +195,12 @@ PHONE = re.compile(r"(?:\+?38)?0\d{9}")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 
 
-async def upsert_contact(m: Message) -> None:
+async def upsert_contact(m: Message, from_client: bool = True) -> None:
+    """Телефон/email беремо лише з повідомлень клієнта — у шаблонах власника свої контакти."""
     if m.chat.type != "private":
         return
-    txt = m.text or m.caption or ""
-    phone = (m.contact.phone_number if m.contact else None) or (PHONE.search(txt) or [None])[0]
+    txt = (m.text or m.caption or "") if from_client else ""
+    phone = (m.contact.phone_number if (m.contact and from_client) else None) or (PHONE.search(txt) or [None])[0]
     email = (EMAIL.search(txt) or [None])[0]
     now = db.now()
     name = " ".join(x for x in (m.chat.first_name, m.chat.last_name) if x)
@@ -309,6 +310,19 @@ async def sheet_formula(m: Message):
     url = f"{cfg.public_url}/api/contacts.csv?key={contacts_key()}"
     await m.answer("Формула для комірки A1 аркуша «Telegram — усі, хто писав»:\n"
                    f"<code>=IMPORTDATA(\"{url}\")</code>")
+
+
+@r.message(Command("contact_del"), F.chat.type == "private")
+async def contact_del(m: Message, command: CommandObject):
+    """/contact_del <tg_id> — прибрати тестовий/зайвий рядок із бази контактів."""
+    if not ui.is_admin(m.from_user):
+        return
+    if not (command.args or "").strip().lstrip("-").isdigit():
+        await m.answer("Вкажи Telegram ID: /contact_del 123456789")
+        return
+    async with db.engine.begin() as c:
+        res = await c.execute(sa.delete(contacts).where(contacts.c.tg_id == int(command.args.strip())))
+    await m.answer("Видалено." if res.rowcount else "Такого контакту немає.")
 
 
 @r.message(Command("contacts"), F.chat.type == "private")
