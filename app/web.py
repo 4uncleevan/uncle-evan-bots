@@ -200,6 +200,7 @@ def make_app() -> web.Application:
     app.router.add_get("/app/kalk", page_kalk)
     app.router.add_get("/app/tg-bridge.js", bridge_js)
     app.router.add_get("/forms/{name}.html", raw_form)
+    app.router.add_static("/icons/", WEBAPP / "icons", show_index=False)
     app.router.add_post("/api/state", api_state)
     app.router.add_post("/api/progress", api_progress)
     app.router.add_post("/api/calc", api_calc)

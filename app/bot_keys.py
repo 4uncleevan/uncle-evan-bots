@@ -109,6 +109,8 @@ async def inline(q: InlineQuery):
             title=("👤 " if b["kind"] == "client" else "") + b["title"],
             description=(await render(b.get("desc", ""))) + (f" · {len(b['messages'])} повід." if len(b["messages"]) > 1 else ""),
             input_message_content=InputTextMessageContent(message_text="⏳" + marker(b["id"], 0)),
+            thumbnail_url=f"{cfg.public_url}/icons/{b['id']}.png" if cfg.public_url else None,
+            thumbnail_width=160, thumbnail_height=160,
         ))
     await q.answer(results[:50], cache_time=1, is_personal=True)
 
