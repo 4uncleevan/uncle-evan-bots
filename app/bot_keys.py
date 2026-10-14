@@ -19,7 +19,7 @@ import sqlalchemy as sa
 import yaml
 from aiogram import Bot, F, Router
 from aiogram.exceptions import TelegramAPIError
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import (BusinessConnection, BusinessMessagesDeleted, CallbackQuery, ChosenInlineResult,
                            CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup, InlineQuery,
                            InlineQueryResultArticle, InputTextMessageContent, LinkPreviewOptions, Message)
@@ -250,12 +250,12 @@ async def target_label(chat_id: int) -> str:
     return str(chat_id)
 
 
-@r.message(CommandStart(F.args.regexp(r"^bizChat(-?\d+)$").as_("m_")), F.chat.type == "private")
-async def start_bizchat(m: Message, m_: re.Match):
-    """Власник натиснув «Manage Bot» у чаті з клієнтом → меню кнопок для цього чату."""
+@r.message(CommandStart(deep_link=True, magic=F.args.regexp(r"^bizChat-?\d+$")), F.chat.type == "private")
+async def start_bizchat(m: Message, command: CommandObject):
+    """Власник натиснув «Керувати ботом» у чаті з клієнтом → меню кнопок для цього чату."""
     if not ui.is_admin(m.from_user):
         return
-    target = int(m_.group(1))
+    target = int(command.args[len("bizChat"):])
     await db.set_setting("keys_target", str(target))
     await m.answer(f"Клієнт: <b>{await target_label(target)}</b>\nОберіть кнопку — повідомлення піде від Вашого імені:",
                    reply_markup=menu_kb(target))
