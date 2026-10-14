@@ -176,6 +176,33 @@ async def api_submit(tg_id: int, which: str, body: dict) -> dict:
     return {"ok": True, "id": app_id, "grant": g["grant"]}
 
 
+def contacts_key() -> str:
+    """Ключ доступу до CSV контактів — похідна від токена бота кнопок; не зберігається окремо."""
+    return hashlib.sha256(("contacts:" + cfg.keys_token).encode()).hexdigest()[:24] if cfg.keys_token else ""
+
+
+async def contacts_csv(req: web.Request) -> web.Response:
+    """База контактів для Google-таблиці (формула IMPORTDATA оновлює її сама)."""
+    import csv
+    import datetime as dt
+    import hmac
+    import io
+    from . import bot_keys
+    key = contacts_key()
+    if not key or not hmac.compare_digest(req.query.get("key", ""), key):
+        raise web.HTTPForbidden()
+    rows = await db.all_(sa.select(bot_keys.contacts).order_by(bot_keys.contacts.c.last_seen.desc()))
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Telegram ID", "Username", "Ім'я", "Телефон", "Email", "Перший контакт", "Останній контакт", "Остання кнопка"])
+    f = lambda t: dt.datetime.fromtimestamp(t, cfg.tz).strftime("%d.%m.%Y %H:%M") if t else ""
+    for x in rows:
+        w.writerow([x["tg_id"], ("@" + x["username"]) if x["username"] else "", x["name"] or "", x["phone"] or "",
+                    x["email"] or "", f(x["first_seen"]), f(x["last_seen"]), x["last_button"] or ""])
+    return web.Response(text=buf.getvalue(), content_type="text/csv", charset="utf-8",
+                        headers={"Cache-Control": "no-store"})
+
+
 async def viber_hook(req: web.Request) -> web.Response:
     """Колбек Viber Channels API: потрібна лише відповідь 200."""
     return web.json_response({"status": 0})
@@ -206,5 +233,6 @@ def make_app() -> web.Application:
     app.router.add_post("/api/calc", api_calc)
     app.router.add_post("/api/submit", api_submit)
     app.router.add_post("/viber", viber_hook)
+    app.router.add_get("/api/contacts.csv", contacts_csv)
     app.router.add_get("/media/{post_id:\\d+}.jpeg", media_jpeg)
     return app

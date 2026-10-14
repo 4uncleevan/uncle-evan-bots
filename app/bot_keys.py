@@ -300,6 +300,17 @@ async def status(m: Message):
                    f"Контактів: {n}\nКнопок: {len(buttons())}")
 
 
+@r.message(Command("sheet"), F.chat.type == "private")
+async def sheet_formula(m: Message):
+    """Формула для Google-таблиці: аркуш сам підтягує базу контактів із сервера."""
+    if not ui.is_admin(m.from_user):
+        return
+    from .web import contacts_key
+    url = f"{cfg.public_url}/api/contacts.csv?key={contacts_key()}"
+    await m.answer("Формула для комірки A1 аркуша «Telegram — усі, хто писав»:\n"
+                   f"<code>=IMPORTDATA(\"{url}\")</code>")
+
+
 @r.message(Command("contacts"), F.chat.type == "private")
 async def export_contacts(m: Message):
     if not ui.is_admin(m.from_user):
