@@ -104,11 +104,18 @@ async def inline(q: InlineQuery):
     for b in buttons():
         if needle and needle not in b["title"].lower() and needle not in b.get("desc", "").lower():
             continue
+        first = b["messages"][0]
+        text = await render(first["text"])
+        if len(b["messages"]) > 1:
+            text += marker(b["id"], 1)
         results.append(InlineQueryResultArticle(
             id=hashlib.md5(b["id"].encode()).hexdigest(),
             title=("👤 " if b["kind"] == "client" else "") + b["title"],
             description=(await render(b.get("desc", ""))) + (f" · {len(b['messages'])} повід." if len(b["messages"]) > 1 else ""),
-            input_message_content=InputTextMessageContent(message_text="⏳" + marker(b["id"], 0)),
+            input_message_content=InputTextMessageContent(
+                message_text=text, parse_mode="HTML",
+                link_preview_options=LinkPreviewOptions(is_disabled=True)),
+            reply_markup=kb(first.get("buttons")),
             thumbnail_url=f"{cfg.public_url}/icons/{b['id']}.png" if cfg.public_url else None,
             thumbnail_width=160, thumbnail_height=160,
         ))
@@ -151,12 +158,6 @@ async def on_business_message(m: Message, bot: Bot):
         b = by_id(bid)
         if not b:
             return
-        try:
-            await bot.delete_business_messages(business_connection_id=m.business_connection_id, message_ids=[m.message_id])
-        except TelegramAPIError as ex:
-            log.warning("keys: тригер не видалено (потрібне право «видаляти повідомлення»): %s", ex)
-            await notify.to_group("⚠️ Бот-кнопки: не можу прибрати службове «⏳» — у Telegram Business → Чатботи "
-                                  "увімкніть боту право видаляти повідомлення.")
         name = m.chat.first_name or ""
         for step in b["messages"][idx:]:
             try:
@@ -215,12 +216,75 @@ async def upsert_contact(m: Message) -> None:
             await c.execute(sa.insert(contacts).values(tg_id=m.chat.id, first_seen=now, **vals))
 
 
+async def send_series(bot: Bot, chat_id: int, bc_id: str, b: dict, start: int = 0, name: str = "") -> str | None:
+    """Надсилає повідомлення кнопки від імені власника. Повертає текст помилки або None."""
+    for step in b["messages"][start:]:
+        try:
+            await bot.send_message(chat_id, await render(step["text"], name), parse_mode="HTML",
+                                   business_connection_id=bc_id, reply_markup=kb(step.get("buttons")),
+                                   link_preview_options=LinkPreviewOptions(is_disabled=True))
+        except TelegramAPIError as ex:
+            log.warning("keys: %s → %s: %s", b["id"], chat_id, ex)
+            return str(ex)
+        await asyncio.sleep(0.4)
+    await db.log("keys_button", chat_id, b["id"])
+    return None
+
+
+def menu_kb(target: int) -> InlineKeyboardMarkup:
+    rows, line = [], []
+    for b in buttons():
+        line.append(InlineKeyboardButton(text=("👤 " if b["kind"] == "client" else "") + b["title"],
+                                         callback_data=f"ks:{target}:{b['id']}"))
+        if len(line) == 2:
+            rows.append(line); line = []
+    if line:
+        rows.append(line)
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def target_label(chat_id: int) -> str:
+    row = await db.one(sa.select(contacts).where(contacts.c.tg_id == chat_id))
+    if row:
+        return f"{row['name'] or ''} {'@' + row['username'] if row['username'] else ''}".strip() or str(chat_id)
+    return str(chat_id)
+
+
+@r.message(CommandStart(F.args.regexp(r"^bizChat(-?\d+)$").as_("m_")), F.chat.type == "private")
+async def start_bizchat(m: Message, m_: re.Match):
+    """Власник натиснув «Manage Bot» у чаті з клієнтом → меню кнопок для цього чату."""
+    if not ui.is_admin(m.from_user):
+        return
+    target = int(m_.group(1))
+    await db.set_setting("keys_target", str(target))
+    await m.answer(f"Клієнт: <b>{await target_label(target)}</b>\nОберіть кнопку — повідомлення піде від Вашого імені:",
+                   reply_markup=menu_kb(target))
+
+
+@r.callback_query(F.data.startswith("ks:"))
+async def on_menu(c: CallbackQuery, bot: Bot):
+    if not ui.is_admin(c.from_user):
+        await c.answer(); return
+    _, target, bid = c.data.split(":", 2)
+    b = by_id(bid)
+    bc = json.loads(await db.get_setting("keys_bc", "{}"))
+    if not b or not bc.get("id"):
+        await c.answer("Бот не підключений до акаунта (Telegram Business → Чатботи).", show_alert=True); return
+    row = await db.one(sa.select(contacts).where(contacts.c.tg_id == int(target)))
+    name = (row["name"] or "").split(" ")[0] if row else ""
+    err = await send_series(bot, int(target), bc["id"], b, 0, name)
+    await c.answer("Надіслано ✅" if not err else f"Не вийшло: {err[:150]}", show_alert=bool(err))
+
+
 # ---------- приватний чат з ботом ----------
 @r.message(CommandStart(), F.chat.type == "private")
 async def start(m: Message):
     if ui.is_admin(m.from_user):
-        await m.answer("Кнопки Uncle Evan. У будь-якому чаті наберіть <b>@" + (ui.BOT_NAMES.get("keys") or "uncleevan77bot") +
-                       "</b> — з'явиться меню.\n/status — стан підключення, /contacts — вивантажити контакти.")
+        t = await db.get_setting("keys_target")
+        await m.answer("Кнопки Uncle Evan.\n• У чаті з клієнтом натисніть угорі «Manage Bot» → тут з'явиться меню для цього чату.\n"
+                       "• Або наберіть у чаті <b>@" + (ui.BOT_NAMES.get("keys") or "uncleevan77bot") + "</b>.\n"
+                       "/status — стан, /contacts — контакти.",
+                       reply_markup=menu_kb(int(t)) if t else None)
     else:
         await m.answer("Це службовий бот Uncle Evan. Для бізнес-плану — @UncleEvanBot, умови гранту — @VlasnaSpravaBot.")
 
