@@ -4,6 +4,9 @@
 Текст поста = заголовок + поле ue_channel (якщо зареєстроване на сайті й заповнене) або «Уривок» + посилання;
 картинка = «Зображення запису».
 Кожен канал відмічається окремо, тож повтор не дублює пост, а збій одного каналу не блокує інший.
+Два потоки: звичайні записи (загальний список REST) і «Радар грантів» (категорія 19 — сайт ховає її
+із загального списку, тому запитуємо явно). У кожного потоку своя базова точка, тож при першому запуску
+старі статті не розсилаються.
 """
 import asyncio
 import datetime as dt
@@ -78,8 +81,12 @@ def _ts(v: str) -> float:
     return dt.datetime.fromisoformat(v).replace(tzinfo=dt.timezone.utc).timestamp()
 
 
-async def fetch_posts(s: aiohttp.ClientSession, n: int = 8) -> list[dict]:
-    rows = await _json(s, _api(f"posts?per_page={n}&orderby=date&order=desc"
+RADAR_CAT = 19
+FEEDS = (("ap_since", ""), ("ap_since_rg", f"&categories={RADAR_CAT}"))   # (ключ базової точки, фільтр)
+
+
+async def fetch_posts(s: aiohttp.ClientSession, n: int = 8, extra: str = "") -> list[dict]:
+    rows = await _json(s, _api(f"posts?per_page={n}&orderby=date&order=desc{extra}"
                                "&_fields=id,date_gmt,modified_gmt,link,title,excerpt,featured_media,meta"))
     return [{"id": r["id"], "date": _ts(r["date_gmt"]), "modified": _ts(r["modified_gmt"]),
              "link": r["link"], "title": clean(r["title"]["rendered"]),
@@ -88,7 +95,8 @@ async def fetch_posts(s: aiohttp.ClientSession, n: int = 8) -> list[dict]:
 
 
 async def fetch_post(s: aiohttp.ClientSession, post_id: int) -> dict | None:
-    for p in await fetch_posts(s, 20):
+    """Будь-яка опублікована стаття за ID (include показує й «Радар грантів»)."""
+    for p in await fetch_posts(s, 1, f"&include={int(post_id)}"):
         if p["id"] == post_id:
             return p
     return None
@@ -247,19 +255,26 @@ def ready(p: dict, now: float) -> bool:
 
 
 async def tick() -> None:
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as s:
-        posts = await fetch_posts(s)
-    if not posts:
-        return
-    since = await db.get_setting("ap_since")
-    if not since:  # перший запуск: старі статті не розсилаємо
-        await db.set_setting("ap_since", str(max(p["date"] for p in posts)))
-        log.info("автопост: базова точка %s", posts[0]["title"])
-        return
     now = dt.datetime.now(dt.timezone.utc).timestamp()
-    for p in sorted(posts, key=lambda x: x["date"]):
-        if p["date"] <= float(since) or not ready(p, now):
-            continue
+    due: dict[int, dict] = {}
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as s:
+        for key, extra in FEEDS:
+            try:
+                posts = await fetch_posts(s, 8, extra)
+            except Exception as ex:
+                log.warning("автопост %s: %s", key, ex)
+                continue
+            if not posts:
+                continue
+            since = await db.get_setting(key)
+            if not since:  # перший запуск потоку: старі статті не розсилаємо
+                await db.set_setting(key, str(max(p["date"] for p in posts)))
+                log.info("автопост %s: базова точка %s", key, posts[0]["title"])
+                continue
+            for p in posts:
+                if p["date"] > float(since) and ready(p, now):
+                    due[p["id"]] = p
+    for p in sorted(due.values(), key=lambda x: x["date"]):
         res = await publish(p)
         if res:
             names = {"tg": "Telegram", "viber": "Viber"}

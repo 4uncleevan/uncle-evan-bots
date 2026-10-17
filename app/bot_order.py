@@ -269,7 +269,7 @@ async def cmd_repost(m: Message, command: CommandObject):
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as s:
         p = await autopost.fetch_post(s, int(arg))
     if not p:
-        await m.answer("Статтю не знайдено серед останніх 20 опублікованих.")
+        await m.answer("Опубліковану статтю з таким ID не знайдено.")
         return
     res = await autopost.publish(p, force=True)
     await m.answer(f"<b>{e(p['title'])}</b>\n" + "\n".join(f"{k}: {v}" for k, v in res.items()))
